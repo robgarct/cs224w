@@ -6,6 +6,19 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from torch_geometric.utils.convert import from_networkx
 
+import json
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
+
 class Generator:
     """
     Base class for generating CVRP data
@@ -33,6 +46,11 @@ class Generator:
         location_dict = {node:all_loc[node] for node in self.G.nodes()}
         nx.set_node_attributes(self.G, location_dict, name="location")
 
+        location_dict_x = {node:all_loc[node][0] for node in self.G.nodes()}
+        location_dict_y = {node: all_loc[node][1] for node in self.G.nodes()}
+        nx.set_node_attributes(self.G, location_dict_x, name="x")
+        nx.set_node_attributes(self.G, location_dict_y, name="y")
+
     def add_cost(self):
         """
         adds edge weight, which corresponds to the distance between
@@ -42,7 +60,9 @@ class Generator:
         distance_dict = {}
         for e in self.G.edges():
             node1, node2 = self.G.nodes()[e[0]], self.G.nodes()[e[1]]
-            dist = np.linalg.norm(node1["location"]- node2["location"])
+            loc1 = np.array([node1["x"], node1["y"]])
+            loc2 = np.array([node2["x"], node1["y"]])
+            dist = np.linalg.norm(loc1 - loc2)
             distance_dict[e] = {"cost":dist}
         nx.set_edge_attributes(self.G, distance_dict)
 
@@ -55,12 +75,12 @@ class Generator:
         """
 
         capacity = np.random.randint(min_cap, max_cap, size=self.n)
-        capacity_dict = {node: capacity[node] for node in self.G.nodes()}
-        nx.set_node_attributes(self.G, capacity_dict, name="capacity")
 
-        #for node in self.G.nodes():
-        #    print(node)
-        #    print(self.G.nodes()[node]["capacity"])
+        capacity_dict = {self.depot_node:0}
+        for node in self.G.nodes():
+            if node != self.depot_node:
+                capacity_dict[node] = capacity[node]
+        nx.set_node_attributes(self.G, capacity_dict, name="capacity")
 
     def draw_graph(self, folder="figure", name="sample_graph"):
         """
@@ -104,6 +124,79 @@ class Generator:
 
         return self.G
 
+    def export_cytoscape(self, folder="data", output_filename="g_cytoscape"):
+        """
+        export data in cytoscape format
+        """
+
+        data_json = nx.cytoscape_data(self.G)
+        folder_path = Path(folder)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+        if '.json' not in output_filename:
+            output_filename += '.json'
+        full_path = folder_path / output_filename
+        with open(full_path, 'w') as f:
+            json.dump(data_json, f, cls=NpEncoder)
+        print("cyjs file exported to: {}".format(output_filename))
+
+    def get_location(self, node_id):
+        """
+        get location of a given node
+        Args:
+             node_id : (int / List[int]) node_ide
+        Returns:
+            np.ndarray
+        """
+
+        array = None
+        if isinstance(node_id, int):
+            array = np.zeros(2, )
+            x, y = self.G.nodes()[node_id]["x"], self.G.nodes()[node_id]["y"]
+            array[0], array[1] = x, y
+        else:
+            array = np.zeros((len(node_id), 2))
+            for i in range(len(node_id)):
+                x, y = self.G.nodes()[node_id[i]]["x"], self.G.nodes()[node_id[i]]["y"]
+                array[i][0] = x
+                array[i][1] = y
+        return array
+
+    def get_capacities(self):
+        """
+        export the product capacity of all nodes
+        Return:
+            (np.ndarray)
+        """
+
+        capacity = []
+        for node in self.G.nodes():
+            if node != self.depot_node:
+                capacity.append(self.G.nodes()[node]["capacity"])
+
+        return np.array(capacity)
+
+    def export_solver_data(self):
+        """
+        Exports data needed by the solver
+        Returns:
+             (np.ndarray, np.ndarray, np.ndarray) depo location, location of other nodes,
+                                                   capacity array
+        """
+        depo = self.get_location(self.depot_node)
+        non_depo_nodes = []
+        for node in self.G.nodes():
+            if node != self.depot_node:
+                non_depo_nodes.append(node)
+        graph = self.get_location(non_depo_nodes)
+        demand = self.get_capacities()
+
+        return depo, graph, demand
+
+
+#depo: location(x, y)
+#graphs: n x 2 array: excluding depot loc
+#demand n x 1 array with of capacity
 
 
 
