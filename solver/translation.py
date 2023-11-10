@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 from functools import reduce
 import pandas as pd
-from baseline_lkh3 import CAPACITIES
+from solver.baseline_lkh3 import CAPACITIES
 
 def format_and_save(val_set, lkh_costs, lkh_paths, dir):
     """
