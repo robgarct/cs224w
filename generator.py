@@ -19,9 +19,35 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
+class Solution:
+    """Wrapper of Graph: "Generator" and solution to it"""
+    # TODO: Code this 
+    pass
+
+class CVRPGraph:
+    """Wrapper around graph, this is what the Generator returns
+    """
+    pass
+
+class SolutionInstance:
+    # TODO: implement this
+    def __init__():
+        graph: CVRPGraph = None
+        solution: List = []
+
+    def get_kth_step(k: int) -> CVRPGraph:
+        # TODO: this is not a good idea, figure out a nice way of generating
+        # Partial CVRPGraph solutions without the need of k
+        # return a graph with the edges of the solution up to the kth step
+        pass
+
+
 class Generator:
     """
     Base class for generating CVRP data
+
+    TODO: This class is having 2 functionalities rn which are Generator and Graph.
+    Let's split that to Generator only and CVRPGraph only.
     """
     def __init__(self, n):
         """
