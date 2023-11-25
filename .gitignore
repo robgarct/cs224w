@@ -3,3 +3,5 @@ LKH-3.0.6/
 solved_lkh**/
 .ipynb_checkpoints/
 figure/
+testing.ipynb
+tmp/

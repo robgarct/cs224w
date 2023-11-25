@@ -5,6 +5,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from pathlib import Path
 from torch_geometric.utils.convert import from_networkx
+from typing import List
+from torch_geometric.data import Data
 
 import json
 
@@ -27,7 +29,10 @@ class Solution:
 class CVRPGraph:
     """Wrapper around graph, this is what the Generator returns
     """
-    pass
+    def export_pyg(self) -> Data:
+        # not sure about this, but I think the "y" values for each partial
+        # solution graph should be the next node to be visited.
+        pass
 
 class SolutionInstance:
     # TODO: implement this
@@ -35,7 +40,7 @@ class SolutionInstance:
         graph: CVRPGraph = None
         solution: List = []
 
-    def get_kth_step(k: int) -> CVRPGraph:
+    def get_partial_solutions() -> List[CVRPGraph]:
         # TODO: this is not a good idea, figure out a nice way of generating
         # Partial CVRPGraph solutions without the need of k
         # return a graph with the edges of the solution up to the kth step
@@ -139,7 +144,6 @@ class Generator:
         Returns:
             (torch_geometric.data.Data)
         """
-
         return from_networkx(self.G)
 
     def get_graph(self):

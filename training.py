@@ -2,20 +2,84 @@
 Training utilities
 """
 
+from torch.optim import Adam
+from tqdm import tqdm
+import torch
+from torch import nn
+import itertools
+
 from model import Model
 from generator import *
 
-def train(model: Model, hyper_paramters):
-    # Training loop
-    # Whoever is coding this should be in touch with the person
-    # coding the Model class s.t. anything model related can be
-    # handled in the model class.
+from torch_geometric.loader import DataLoader
+from typing import List
 
-    # Make sure to include printing of metrics and everything needed
-    
-    # Something to do here is to figure out how to build batches using
-    # generator.py
+def get_solution_instances(graphs_path:str) -> List[SolutionInstance]:
     pass
+
+def get_data_loaders(graphs_path:str, train_split_size=0.8, batch_size=16) -> DataLoader:
+    graphs = []
+    sol_instances = get_solution_instances(graphs_path)
+    split_idx = int(train_split_size * len(sol_instances))
+    
+    for sol_instance in sol_instances:
+        cvrp_graphs = sol_instance.get_partial_solutions()
+        # convert to pytorch geometric dataset
+        cvrp_graphs =  list(map(lambda g: g.export_pyg(), cvrp_graphs))
+        graphs.append(cvrp_graphs)
+    
+    train_graphs = itertools.chain.from_iterable(graphs[:split_idx])
+    valid_graphs = itertools.chain.from_iterable(graphs[split_idx:])
+
+    train_graphs = DataLoader(train_graphs, shuffle=True, batch_size=batch_size)
+    valid_graphs = DataLoader(valid_graphs, shuffle=True, batch_size=batch_size)
+    return train_graphs, valid_graphs
+
+def compute_accuracy(logits, nexts):
+    return (torch.argmax(logits) == nexts).mean().cpu().detach()
+
+def eval(model: Model, data_loder: DataLoader):
+    loss_fn = nn.CrossEntropyLoss()
+    losses = []
+    accs = []
+    for batched_graphs in data_loder:
+        logits = model(batched_graphs)
+        nexts = batched_graphs.y
+        loss = loss_fn(logits, nexts)
+        valid_acc = compute_accuracy(logits, nexts)
+        losses.append(loss.cpu().detach())
+        accs.append(valid_acc.cpu().detach())
+    return torch.tensor(losses).mean().item(), torch.tensor(accs).mean().item()
+        
+
+def train(model: Model, graphs_path: str, epochs:int = 20, batch_size:int = 16, learning_rate:float=3e-5, eval_epochs:int=1):
+    # Training loop
+    optimizer = Adam(model.parameters(), lr=learning_rate)
+    loss_fn = nn.CrossEntropyLoss()
+    train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size)
+
+    for e in tqdm(range(epochs), "Epochs", epochs):
+        for batched_graphs in train_dl:
+            nexts = batched_graphs.y
+            # this should return very small numbers for irrelevant classes
+            logits = model(batched_graphs) # (batch_size, classes)
+            
+            loss = loss_fn(logits, nexts)
+            with torch.no_grad():
+                acc = compute_accuracy(logits, nexts)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+           
+            print(f"Train {e} - loss:{loss:.4f}, acc:{acc:.4f}")
+            
+            if e % eval_epochs == 0:
+                # run eval
+                model.eval()
+                with torch.no_grad():
+                    valid_loss, valid_acc = eval(model, valid_dl)
+                model.train()
+                print(f"Valid {e} - loss:{valid_loss:.4f}, acc:{valid_acc:.4f}")
 
 def inference(model: Model, graph_wo_edges):
     # Predict solution
