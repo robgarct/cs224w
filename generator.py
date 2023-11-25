@@ -29,6 +29,11 @@ class Solution:
 class CVRPGraph:
     """Wrapper around graph, this is what the Generator returns
     """
+    @property
+    def num_nodes(self) -> int:
+        # TODO: implement this, e.g. should return 21 for VRP20 graphs
+        pass
+
     def export_pyg(self) -> Data:
         # not sure about this, but I think the "y" values for each partial
         # solution graph should be the next node to be visited.
@@ -36,15 +41,31 @@ class CVRPGraph:
 
 class SolutionInstance:
     # TODO: implement this
-    def __init__():
-        graph: CVRPGraph = None
-        solution: List = []
+    def __init__(self, graph: CVRPGraph, solution: List[int]):
+        self.graph = graph
+        self.solution = solution
 
     def get_partial_solutions() -> List[CVRPGraph]:
         # TODO: this is not a good idea, figure out a nice way of generating
         # Partial CVRPGraph solutions without the need of k
         # return a graph with the edges of the solution up to the kth step
+        # for every possible k in {1, ..., len(solution)}
         pass
+
+    def add_node(self, node:int):
+        # TODO(roberto): remove this comment - I'm using this in inference.py
+        self.solution.append(node)
+
+    def as_partial_solution(self) -> CVRPGraph:
+        # TODO: implement this - the idea is that this should just return a CVRP
+        # graph where the edges are the solution constructed so far.
+        # In theory this should return get_partial_solutions()[-1], however
+        # there must be an efficient way to do it without generating all the other
+        # partial solutions.
+        pass
+
+    def sol_is_complete(self) -> bool:
+        return len(set(self.solution)) == self.graph.num_nodes
 
 
 class Generator:

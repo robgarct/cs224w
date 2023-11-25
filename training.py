@@ -98,8 +98,3 @@ def train(model: Model, graphs_path: str, epochs:int = 20, batch_size:int = 16, 
                     valid_loss, valid_acc = eval(model, valid_dl)
                 model.train()
                 print(f"Valid {e} - loss:{valid_loss:.4f}, acc:{valid_acc:.4f}")
-
-def inference(model: Model, graph_wo_edges):
-    # Predict solution
-    print("inference")
-    pass
