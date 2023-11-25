@@ -101,4 +101,5 @@ def train(model: Model, graphs_path: str, epochs:int = 20, batch_size:int = 16, 
 
 def inference(model: Model, graph_wo_edges):
     # Predict solution
+    print("inference")
     pass
