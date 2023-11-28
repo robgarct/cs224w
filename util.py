@@ -1,6 +1,6 @@
 #the util file
 
-from graph import CVPRGraph, BaseGraph, SolverGraph
+from graph import CVRPGraph, GraphCollection
 import numpy as np
 import pickle5 as pickle
 
@@ -15,7 +15,7 @@ def generate_graph_scratch(num_nodes=10, min_cap=1, max_cap=10):
         (Graph) graph
     """
 
-    g = CVPRGraph(num_nodes)
+    g = CVRPGraph(num_nodes)
 
     # add graph location
     all_loc = np.random.uniform(size=(num_nodes, 2))
@@ -52,31 +52,22 @@ def generate_multiple_graphs(N, num_nodes):
 
     return [generate_graph_scratch(num_nodes) for i in range(N)]
 
-def create_travel_graph(visited_nodes, loc_array=None):
+def create_graph_solver_solution(graph_details, solution_details):
     """
-    create a graph for the visited nodes
+    create a graph from the solver solution output
     Args:
-        visited_nodes: (List[int]) list of visited nodes
-        loc_array: (np.ndarray) the location of the nodes. shape: (num nodes, 2)
-                                array order needs to match the node order
+        graph_details: (List[List]) the details of the input graph
+        solution_details: (List) the solution details
     Returns:
-        (SolverGraph)
+        GraphCollection
     """
+    depot_loc = graph_details[0]
+    all_loc = {i+1: graph_details[1][i] for i in range(len(graph_details[1]))}
+    all_capacity = {i+1: graph_details[2][i] for i in range(len(graph_details[2]))}
+    order_nodes = solution_details[1]
 
-    g = SolverGraph()
-    u = g.depot_node
-    for v in visited_nodes:
-        g.add_edge(u, v)
-        u = v
-    if loc_array is not None:
-        # checker
-        loc_x = {}
-        loc_y = {}
-        for n in range(loc_array.shape[0]):
-            loc_x[n], loc_y[n] = loc_array[n][0], loc_array[n][0]
-        g.assign_location(loc_x, loc_y)
-    g.draw_graph()
+    col = GraphCollection(depot_loc[0], depot_loc[1])
+    col.add_multiple_nodes(order_nodes, all_loc, all_capacity)
 
-
-
+    return col
 
