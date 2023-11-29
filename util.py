@@ -2,7 +2,7 @@
 
 from graph import CVRPGraph, GraphCollection
 import numpy as np
-import pickle5 as pickle
+# import pickle5 as pickle
 
 def generate_graph_scratch(num_nodes=10, min_cap=1, max_cap=10):
     """
