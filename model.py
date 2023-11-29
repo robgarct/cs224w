@@ -43,6 +43,8 @@ class Model(nn.Module):
         """ Get the visited nodes and make their embeddings to be -Inf so that the softmax is 0 """
         batch_edge_index = batched_graphs.edge_index
 
+        num_nodes = batched_graphs.num_nodes
+        
         for graph_idx in range(batched_graphs.num_graphs):
             batch_mask = batched_graphs.batch == graph_idx
 
@@ -60,7 +62,10 @@ class Model(nn.Module):
             # in the batch with min index
             min_value, _ = torch.min(connected_nodes, dim=0)
             connected_nodes = connected_nodes[connected_nodes!=min_value]
-            x[graph_idx,connected_nodes]=-1e100
+            
+            mask = torch.zeros(num_nodes)
+            mask[connected_nodes] = True
+            x[graph_idx].masked_fill_(mask,-1e100)
             
         return x
     
