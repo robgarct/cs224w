@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from torch_geometric.utils.convert import from_networkx
 from torch_geometric.data import Data
-import pickle5 as pickle
+# import pickle5 as pickle
 from copy import deepcopy
 import torch
 

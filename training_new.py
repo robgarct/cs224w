@@ -17,15 +17,14 @@ from torch_geometric.loader import DataLoader
 from typing import List
 from util import *
 
-import pickle5 as pkl
+# import pickle5 as pkl
 
 
-def get_solution_instances(graphs_path: str) -> List[SolutionInstance]:
+def get_solution_instances(graphs_path: str) -> List[GraphCollection]:
     """Given the path to the pickle of graphs generated and further solved
     using LKH, returns a list of SolutionInstances.
     """
-    with open(graphs_path, "rb") as f:
-        graphs = pkl.load(f)
+    graphs = pd.read_pickle(graphs_path)
     graphs = [create_graph_solver_solution(g, sol) for g, sol in graphs]
 
     return graphs
@@ -40,23 +39,19 @@ def get_data_loaders(graphs_path: str, train_split_size=0.8, batch_size=16) -> D
     sol_instances = get_solution_instances(graphs_path)
     split_idx = int(train_split_size * len(sol_instances))
 
-    for sol_instance in sol_instances:
+    for sol_instance in tqdm(sol_instances, "Parsing Graphs"):
         ## need to specify how many partial solutions we need partial solution index
         #cvrp_graphs = sol_instance.get_partial_solutions()
-        cvrp_graphs = sol_instance.get_k_partial_solutions(2)
+        cvrp_graphs = sol_instance.get_all_graphs()
         # convert to pytorch geometric dataset
         cvrp_graphs = list(map(lambda g: g.export_pyg(), cvrp_graphs))
         graphs.append(cvrp_graphs)
 
-    return graphs
-    #sys.exit()
-
-
     train_graphs = itertools.chain.from_iterable(graphs[:split_idx])
     valid_graphs = itertools.chain.from_iterable(graphs[split_idx:])
 
-    train_graphs = DataLoader(train_graphs, shuffle=True, batch_size=batch_size)
-    valid_graphs = DataLoader(valid_graphs, shuffle=True, batch_size=batch_size)
+    train_graphs = DataLoader(list(train_graphs), shuffle=True, batch_size=batch_size)
+    valid_graphs = DataLoader(list(valid_graphs), shuffle=True, batch_size=batch_size)
     return train_graphs, valid_graphs
 
 
