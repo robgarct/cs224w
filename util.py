@@ -62,15 +62,19 @@ def create_graph_solver_solution(graph_details, solution_details):
         GraphCollection
     """
     depot_loc = graph_details[0]
-    all_loc = {0: depot_loc}
+    all_loc_x = {0: depot_loc[0]}
+    all_loc_y = {0: depot_loc[1]}
     all_capacity = {0: 0}
     for i in range(len(graph_details[1])):
-        all_loc[i+1] = graph_details[1][i]
+        all_loc_x[i+1] = graph_details[1][i][0]
+        all_loc_y[i + 1] = graph_details[1][i][1]
         all_capacity[i+1] = graph_details[2][i]
     order_nodes = solution_details[1]
 
-    col = GraphCollection(depot_loc[0], depot_loc[1])
-    col.add_multiple_nodes(order_nodes, all_loc, all_capacity)
+    #print(all_loc_y)
+    #print(all_capacity)
+    col = GraphCollection(all_loc_x, all_loc_y, all_capacity)
+    col.add_multiple_nodes(order_nodes)
 
     return col
 

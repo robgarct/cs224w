@@ -137,7 +137,7 @@ class BaseGraph:
         feature_matrix = np.zeros((n, 3))
         loc_x, loc_y, cap = np.zeros(n, ), np.zeros(n, ), np.zeros(n, )
         n = 0
-        for node in self.G.nodes:
+        for node in self.G.nodes():
             loc_x[n] = nx.get_node_attributes(self.G, "x")[node]
             loc_y[n] = nx.get_node_attributes(self.G, "y")[node]
             cap[n] = nx.get_node_attributes(self.G, "capacity")[node]
@@ -275,20 +275,23 @@ class GraphCollection:
     Has functionalities to build the graph sequentially
     """
 
-    def __init__(self, depot_loc_x, depot_loc_y, depot_capacity=0):
+    def __init__(self, loc_dict_x, loc_dict_y, capacity_dict):
         """
         depot_loc_x: (float) x-coordinate of depot_location
         depot_loc_y: (float) y-coordinate of depot_location
         """
         self.start = BaseGraph()
-        self.start.assign_location({0:depot_loc_x}, {0:depot_loc_y})
-        self.start.set_capacity({0: depot_capacity})
+        for key in loc_dict_x:
+            self.start.add_node(key)
+        self.start.assign_location(loc_dict_x, loc_dict_y)
+        self.start.set_capacity(capacity_dict)
+        #print("nodes", self.start.G.nodes())
         self.visited_nodes = [self.start.depot_node]
         self.all_graphs = []
         self.curr_graph = self.start
 
     ## TODO: Graph label
-    def add_node(self, node_id, loc_x=None, loc_y=None, capacity=None):
+    def update_node(self, node_id, loc_x=None, loc_y=None, capacity=None):
         """
         adds a single node and connects it to the previously visited node
         Args:
@@ -307,7 +310,7 @@ class GraphCollection:
         self.curr_graph.set_graph_label(node_id)
         self.all_graphs.append(self.curr_graph)
         self.curr_graph = deepcopy(self.curr_graph)
-        self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
+        #self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
         self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
         self.visited_nodes.append(node_id)
 
@@ -351,25 +354,17 @@ class GraphCollection:
             sample = random.sample(range(1, len(self.all_graphs)), k)
             return [self.all_graphs[i] for i in sample]
 
-    def add_multiple_nodes(self, node_ids, loc_dict=None, capacity_dict=None):
+    def add_multiple_nodes(self, node_ids):
         """
         add multiple_nodes to the graph
         Args:
             node_ids: (List[int]) the nodes to add
-            loc_dict: (dict) (int) node_id > List[float, float] x_loc, y_loc
-            capacity_dict: (dict) (int) node_id > (int) capacity
         """
 
         for i in range(len(node_ids)):
             n = node_ids[i]
-            if n in loc_dict and n in capacity_dict:
-                self.add_node(n, loc_dict[n][0], loc_dict[n][0], capacity_dict[n])
-            elif n in loc_dict:
-                self.add_node(n, loc_dict[n][0], loc_dict[n][0])
-            elif n in capacity_dict:
-                self.add_node(n, capacity=capacity_dict[n])
-            else:
-                self.add_node(n)
+            self.update_node(n)
+
 
     def get_all_graphs(self):
         """
