@@ -1,12 +1,15 @@
 ## Classes for generating CVRP data
+import random
 
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 from pathlib import Path
 from torch_geometric.utils.convert import from_networkx
+from torch_geometric.data import Data
 import pickle5 as pickle
 from copy import deepcopy
+import torch
 
 '''
 class Solution:
@@ -72,7 +75,7 @@ class BaseGraph:
             self.assign_location({node_id:x}, {node_id:y})
 
         if c is not None:
-            self.set_capacity({node_id:x})
+            self.set_capacity({node_id:c})
 
     def add_edge(self, node1, node2):
         """
@@ -118,11 +121,34 @@ class BaseGraph:
         Returns:
             (torch_geometric.data.Data)
         """
+        #pyg_graph =  from_networkx(self.G)
+        edge_list = []
+        edge_attributes = []
+        i = 0
+        for edge in self.G.edges():
+            edge_list.append(edge)
+            #print(nx.get_edge_attributes(self.G, "cost"))
+            #edge_attributes.append(nx.get_edge_attributes(self.G, "cost")[edge])
+            i += 1
+        edge_list = torch.tensor(edge_list)
+        #edge_attributes = torch.tensor(edge_attributes)
 
-        pyg_graph =  from_networkx(self.G)
+        n = self.G.number_of_nodes()
+        feature_matrix = np.zeros((n, 3))
+        loc_x, loc_y, cap = np.zeros(n, ), np.zeros(n, ), np.zeros(n, )
+        n = 0
+        for node in self.G.nodes:
+            loc_x[n] = nx.get_node_attributes(self.G, "x")[node]
+            loc_y[n] = nx.get_node_attributes(self.G, "y")[node]
+            cap[n] = nx.get_node_attributes(self.G, "capacity")[node]
+            n += 1
+        feature_matrix[:, 0], feature_matrix[:, 1] = loc_x, loc_y
+        feature_matrix[:, 2] = cap
 
+        pyg_graph = Data(x=feature_matrix, edge_index=edge_list,
+                         edge_attr={})
         ### this might work
-        #pyg_graph["label"] = self.graph_label 
+        pyg_graph["y"] = self.get_graph_label()
         return pyg_graph
 
     def get_graph(self):
@@ -272,11 +298,20 @@ class GraphCollection:
             capacity: (int) the product capacity of the node
         """
 
+
+        dist = None
+        if loc_x is not None and loc_y is not None:
+            prev_node = self.curr_graph.G.nodes()[self.visited_nodes[-1]]
+            #x, y = prev_node.get
+            #dist = np.sqrt((x-))
+        self.curr_graph.set_graph_label(node_id)
         self.all_graphs.append(self.curr_graph)
         self.curr_graph = deepcopy(self.curr_graph)
         self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
         self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
         self.visited_nodes.append(node_id)
+
+        ## Alternative solution
 
     def get_current_graph(self):
         """
@@ -298,6 +333,23 @@ class GraphCollection:
                 k, len(self.all_graphs)))
         else:
             return self.all_graphs[k]
+
+    def get_k_partial_solutions(self, k):
+        """
+        return k partial solutions
+        Args:
+            k: (int)
+
+        Returns:
+            [List[BaseGraph]]
+        """
+        if k > len(self.all_graphs):
+            print("{} is bigger than total number of available graphs. "
+                  "Returning all graphs in the list")
+            return self.all_graphs
+        else:
+            sample = random.sample(range(1, len(self.all_graphs)), k)
+            return [self.all_graphs[i] for i in sample]
 
     def add_multiple_nodes(self, node_ids, loc_dict=None, capacity_dict=None):
         """

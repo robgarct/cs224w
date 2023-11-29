@@ -1,6 +1,7 @@
 """
 Training utilities
 """
+import sys
 
 from torch.optim import Adam
 from tqdm import tqdm
@@ -40,11 +41,16 @@ def get_data_loaders(graphs_path: str, train_split_size=0.8, batch_size=16) -> D
     split_idx = int(train_split_size * len(sol_instances))
 
     for sol_instance in sol_instances:
-        ## upto what need to specify the partial solution index
-        cvrp_graphs = sol_instance.get_partial_solutions()
+        ## need to specify how many partial solutions we need partial solution index
+        #cvrp_graphs = sol_instance.get_partial_solutions()
+        cvrp_graphs = sol_instance.get_k_partial_solutions(2)
         # convert to pytorch geometric dataset
         cvrp_graphs = list(map(lambda g: g.export_pyg(), cvrp_graphs))
         graphs.append(cvrp_graphs)
+
+    return graphs
+    #sys.exit()
+
 
     train_graphs = itertools.chain.from_iterable(graphs[:split_idx])
     valid_graphs = itertools.chain.from_iterable(graphs[split_idx:])
