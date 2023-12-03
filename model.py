@@ -61,9 +61,7 @@ class Model(nn.Module):
             min_value, _ = torch.min(connected_nodes, dim=0)
             connected_nodes = connected_nodes[connected_nodes!=min_value]
             
-            num_nodes = torch.sum(batch_mask).item()
-            mask = torch.zeros(num_nodes, dtype=torch.bool).cuda()
-            mask[connected_nodes] = True
+            mask = torch.isin(batch_nodes, connected_nodes)
             x[graph_idx].masked_fill_(mask,-1e100)
             
         return x
