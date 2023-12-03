@@ -20,23 +20,23 @@ from util import *
 # import pickle5 as pkl
 
 
-def get_solution_instances(graphs_path: str) -> List[GraphCollection]:
+def get_solution_instances(graphs_path: str, max_instances: int) -> List[GraphCollection]:
     """Given the path to the pickle of graphs generated and further solved
     using LKH, returns a list of SolutionInstances.
     """
     graphs = pd.read_pickle(graphs_path)
-    graphs = [create_graph_solver_solution(g, sol) for g, sol in graphs]
-
+    if max_instances != -1:
+        graphs = [create_graph_solver_solution(g, sol) for g, sol in graphs[:max_instances]]
     return graphs
 
 
-def get_data_loaders(graphs_path: str, train_split_size=0.8, batch_size=16) -> DataLoader:
+def get_data_loaders(graphs_path: str, train_split_size=0.8, batch_size=16, max_instances=-1) -> DataLoader:
     """Given the path to the pickle of graphs generated and further solved
     using LKH, returns 2 PYG's DataLoaders, one for training and the other
     for validation.
     """
     graphs = []
-    sol_instances = get_solution_instances(graphs_path)
+    sol_instances = get_solution_instances(graphs_path, max_instances)
     split_idx = int(train_split_size * len(sol_instances))
 
     for sol_instance in tqdm(sol_instances, "Parsing Graphs"):
@@ -59,7 +59,7 @@ def compute_accuracy(logits, nexts):
     """Given logit predictions and the ground truth nodes to be visited next,
     computes the accuracy of the model.
     """
-    return (torch.argmax(logits) == nexts).mean().cpu().detach()
+    return (torch.argmax(logits, dim=-1) == nexts).to(torch.float32).mean().cpu().detach()
 
 
 def eval(model: Model, data_loder: DataLoader):
@@ -79,13 +79,13 @@ def eval(model: Model, data_loder: DataLoader):
 
 
 def train(model: Model, graphs_path: str, epochs: int = 20, batch_size: int = 16, learning_rate: float = 3e-5,
-          eval_epochs: int = 1):
+          eval_epochs: int = 1, max_instances: int = -1):
     """Runs training for the model on the graphs pointed out by the given graphs path.
     The model weights are updated inplace, so this function returns nothing.
     """
     optimizer = Adam(model.parameters(), lr=learning_rate)
     loss_fn = nn.CrossEntropyLoss()
-    train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size)
+    train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size, max_instances=max_instances)
 
     for e in tqdm(range(epochs), "Epochs", epochs):
         for batched_graphs in train_dl:

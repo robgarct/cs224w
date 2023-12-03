@@ -56,6 +56,10 @@ class Model(nn.Module):
             # Connected nodes are just unique nodes of the edges
             connected_nodes = torch.unique(edge_index.flatten())
             
+            # No edges TODO(pulkit): Take a look at this
+            if connected_nodes.shape[0] == 0:
+                continue
+           
             # remove the depot node, Here a heuristic is that the depot node is the node 
             # in the batch with min index
             min_value, _ = torch.min(connected_nodes, dim=0)
