@@ -130,7 +130,7 @@ class BaseGraph:
             #print(nx.get_edge_attributes(self.G, "cost"))
             #edge_attributes.append(nx.get_edge_attributes(self.G, "cost")[edge])
             i += 1
-        edge_list = torch.tensor(edge_list)
+        edge_list = torch.tensor(edge_list).T
         #edge_attributes = torch.tensor(edge_attributes)
 
         n = self.G.number_of_nodes()
