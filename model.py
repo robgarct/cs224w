@@ -39,7 +39,7 @@ class Model(nn.Module):
         ## Apply dropout
         self.dropout = dropout
     
-    def get_visited_nodes_and_update_embeddings(x: torch.Tensor, batched_graphs: Batch):
+    def get_visited_nodes_and_update_embeddings(self, x: torch.Tensor, batched_graphs: Batch):
         """ Get the visited nodes and make their embeddings to be -Inf so that the softmax is 0 """
         batch_edge_index = batched_graphs.edge_index
         
@@ -62,7 +62,7 @@ class Model(nn.Module):
             connected_nodes = connected_nodes[connected_nodes!=min_value]
             
             mask = torch.isin(batch_nodes, connected_nodes)
-            x[graph_idx].masked_fill_(mask,-1e100)
+            x[graph_idx].masked_fill_(mask,-1e10)
             
         return x
     

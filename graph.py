@@ -130,7 +130,7 @@ class BaseGraph:
             #print(nx.get_edge_attributes(self.G, "cost"))
             #edge_attributes.append(nx.get_edge_attributes(self.G, "cost")[edge])
             i += 1
-        edge_list = torch.tensor(edge_list).T
+        edge_list = torch.LongTensor(edge_list).T
         #edge_attributes = torch.tensor(edge_attributes)
 
         n = self.G.number_of_nodes()
@@ -144,6 +144,7 @@ class BaseGraph:
             n += 1
         feature_matrix[:, 0], feature_matrix[:, 1] = loc_x, loc_y
         feature_matrix[:, 2] = cap
+        feature_matrix = torch.FloatTensor(feature_matrix)
 
         pyg_graph = Data(x=feature_matrix, edge_index=edge_list,
                          edge_attr={})
