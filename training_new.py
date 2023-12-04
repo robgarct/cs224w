@@ -71,7 +71,7 @@ def eval(model: Model, data_loder: DataLoader):
     losses = []
     accs = []
     for batched_graphs in data_loder:
-        batched_graphs = batched_graphs.cuda()
+        batched_graphs = batched_graphs.to(device=model.device)
         logits = model(batched_graphs)
         nexts = batched_graphs.y
         loss = loss_fn(logits, nexts)
@@ -95,7 +95,7 @@ def train(model: Model, graphs_path: str, epochs: int = 20, batch_size: int = 16
         epoch_loss = 0
         n_batches = len(train_dl)
         for batched_graphs in tqdm(train_dl, "Batches", n_batches):
-            batched_graphs = batched_graphs.cuda()
+            batched_graphs = batched_graphs.to(device=model.device)
             nexts = batched_graphs.y
             # this should return very small numbers for irrelevant classes
             logits = model(batched_graphs)  # (batch_size, classes)
