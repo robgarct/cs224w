@@ -27,6 +27,8 @@ def get_solution_instances(graphs_path: str, max_instances: int) -> List[GraphCo
     graphs = pd.read_pickle(graphs_path)
     if max_instances != -1:
         graphs = [create_graph_solver_solution(g, sol) for g, sol in graphs[:max_instances]]
+    else:
+        graphs = [create_graph_solver_solution(g, sol) for g, sol in graphs]
     return graphs
 
 
