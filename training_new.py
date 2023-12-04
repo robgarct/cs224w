@@ -88,26 +88,33 @@ def train(model: Model, graphs_path: str, epochs: int = 20, batch_size: int = 16
     loss_fn = nn.CrossEntropyLoss()
     train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size, max_instances=max_instances)
 
-    for e in tqdm(range(epochs), "Epochs", epochs):
-        for batched_graphs in train_dl:
+    for e in range(epochs):
+        epoch_acc = 0
+        epoch_loss = 0
+        n_batches = len(train_dl)
+        for batched_graphs in tqdm(train_dl, "Batches", n_batches):
             batched_graphs = batched_graphs.cuda()
             nexts = batched_graphs.y
             # this should return very small numbers for irrelevant classes
             logits = model(batched_graphs)  # (batch_size, classes)
 
             loss = loss_fn(logits, nexts)
+
             with torch.no_grad():
                 acc = compute_accuracy(logits, nexts)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            
+            epoch_loss += loss.cpu().detach() / n_batches
+            epoch_acc += acc.cpu().detach() / n_batches
 
-            print(f"Train {e} - loss:{loss:.4f}, acc:{acc:.4f}")
+        print(f"Train {e} - loss:{loss:.4f}, acc:{acc:.4f}")
 
-            if e % eval_epochs == 0:
-                # run eval
-                model.eval()
-                with torch.no_grad():
-                    valid_loss, valid_acc = eval(model, valid_dl)
-                model.train()
-                print(f"Valid {e} - loss:{valid_loss:.4f}, acc:{valid_acc:.4f}")
+        if e % eval_epochs == 0:
+            # run eval
+            model.eval()
+            with torch.no_grad():
+                valid_loss, valid_acc = eval(model, valid_dl)
+            model.train()
+            print(f"Valid {e} - loss:{valid_loss:.4f}, acc:{valid_acc:.4f}")
