@@ -38,6 +38,10 @@ class Model(nn.Module):
         
         ## Apply dropout
         self.dropout = dropout
+
+    @property
+    def device(self):
+        return next(self.parameters()).device
     
     def get_visited_nodes_and_update_embeddings(self, x: torch.Tensor, batched_graphs: Batch):
         """ Get the visited nodes and make their embeddings to be -Inf so that the softmax is 0 """
