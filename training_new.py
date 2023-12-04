@@ -93,7 +93,7 @@ def train(model: Model, graphs_path: str, epochs: int = 20, batch_size: int = 16
             batched_graphs = batched_graphs.cuda()
             nexts = batched_graphs.y
             # this should return very small numbers for irrelevant classes
-            logits = model()  # (batch_size, classes)
+            logits = model(batched_graphs)  # (batch_size, classes)
 
             loss = loss_fn(logits, nexts)
             with torch.no_grad():
