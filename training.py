@@ -15,16 +15,24 @@ from generator import *
 from torch_geometric.loader import DataLoader
 from typing import List
 
-def get_solution_instances(graphs_path:str) -> List[SolutionInstance]:
+def get_solution_instances(graphs_path:str, max_graphs:int=-1) -> List[SolutionInstance]:
     """Given the path to the pickle of graphs generated and further solved
     using LKH, returns a list of SolutionInstances.
     """
     graphs = pd.read_pickle(graphs_path)
-    graphs = [(CVRPGraph(g), sol) for g, sol in graphs]
+    if max_graphs != -1:
+        graphs = [(CVRPGraph(g), sol) for g, sol in graphs[:max_graphs]]
+    else:
+        graphs = [(CVRPGraph(g), sol) for g, sol in graphs]
     return [SolutionInstance(g, sol) for g, sol in graphs]
         
 
-def get_data_loaders(graphs_path:str, train_split_size=0.8, batch_size=16) -> DataLoader:
+def get_data_loaders(
+    graphs_path:str,
+    train_split_size=0.8,
+    batch_size=16,
+    max_graphs=-1
+) -> DataLoader:
     """Given the path to the pickle of graphs generated and further solved
     using LKH, returns 2 PYG's DataLoaders, one for training and the other
     for validation.
@@ -68,13 +76,21 @@ def eval(model: Model, data_loder: DataLoader):
     return torch.tensor(losses).mean().item(), torch.tensor(accs).mean().item()
         
 
-def train(model: Model, graphs_path: str, epochs:int = 20, batch_size:int = 16, learning_rate:float=3e-5, eval_epochs:int=1):
+def train(
+    model: Model, 
+    graphs_path: str,
+    epochs:int = 20,
+    batch_size:int = 16,
+    learning_rate:float=3e-5,
+    eval_epochs:int=1,
+    max_graphs:int = -1,
+):
     """Runs training for the model on the graphs pointed out by the given graphs path.
     The model weights are updated inplace, so this function returns nothing.
     """
     optimizer = Adam(model.parameters(), lr=learning_rate)
     loss_fn = nn.CrossEntropyLoss()
-    train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size)
+    train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size, max_graphs=max_graphs)
 
     for e in tqdm(range(epochs), "Epochs", epochs):
         for batched_graphs in train_dl:
