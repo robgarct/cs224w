@@ -38,7 +38,7 @@ def get_data_loaders(
     for validation.
     """
     graphs = []
-    sol_instances = get_solution_instances(graphs_path)
+    sol_instances = get_solution_instances(graphs_path, max_graphs)
     split_idx = int(train_split_size * len(sol_instances))
     
     for sol_instance in sol_instances:
