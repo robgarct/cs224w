@@ -92,14 +92,22 @@ class Model(nn.Module):
           x = F.dropout(x, p = self.dropout, training=self.training)
 
         x = self.convs[self.num_layers-1](x=x, edge_index=edge_index)
+        #size of x here is (batch_size*N, out_dim)
+       
+        ## Apply x.xT to get the edge embedding for all the edges
+        batch_size = batched_graphs.batch_size
+        num_nodes = (int)(x.shape[0]/batch_size)
+        xxT_batch = [torch.mm(x[j*num_nodes:j*num_nodes + num_nodes,:], x[j*num_nodes:j*num_nodes + num_nodes,:].t()) for j in range(batch_size)]
+        xxT_batch = torch.cat(xxT_batch,dim=0)
+        #size of xxT_batch here is (batch_size*N, N)
         
         ## pool over the batch, to get 1 embedding of size(= number of nodes) for each graph
-        x = self.pool(x, batch=batch)
-        ## Size of x here is (batch_size, N)
-        
+        x_pool = self.pool(xxT_batch, batch=batch)        
+        ## Size of x_pool here is (batch_size, N)
+
         ## To nullify the probs of connected nodes except the depot node
-        x = self.get_visited_nodes_and_update_embeddings(x, batched_graphs)      
-        return x
+        x_pool = self.get_visited_nodes_and_update_embeddings(x_pool, batched_graphs)
+        return x_pool
 
 
     def probs(self, batched_graphs : Batch):
