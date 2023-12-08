@@ -10,7 +10,7 @@ from torch_geometric.data import Data
 # import pickle5 as pickle
 from copy import deepcopy
 import torch
-
+import math
 '''
 class Solution:
     """Wrapper of Graph: "Generator" and solution to it"""
@@ -134,16 +134,23 @@ class BaseGraph:
         #edge_attributes = torch.tensor(edge_attributes)
 
         n = self.G.number_of_nodes()
-        feature_matrix = np.zeros((n, 3))
-        loc_x, loc_y, cap = np.zeros(n, ), np.zeros(n, ), np.zeros(n, )
+        feature_matrix = np.zeros((n, 4))
+        loc_x, loc_y, cap, dist_depot = np.zeros(n, ), np.zeros(n, ), np.zeros(n, ), np.zeros(n, )
         n = 0
-        for node in self.G.nodes():
+        for node in self.G.nodes():        
             loc_x[n] = nx.get_node_attributes(self.G, "x")[node]
             loc_y[n] = nx.get_node_attributes(self.G, "y")[node]
             cap[n] = nx.get_node_attributes(self.G, "capacity")[node]
+            if n==0: 
+                depo_x = nx.get_node_attributes(self.G, "x")[node]
+                depo_y = nx.get_node_attributes(self.G, "y")[node]
+                dist_depot[n] = 0
+            else:
+                dist_depot[n] = math.sqrt((depo_x-loc_x[n])**2 + (depo_y - loc_y[n])**2)
             n += 1
         feature_matrix[:, 0], feature_matrix[:, 1] = loc_x, loc_y
         feature_matrix[:, 2] = cap
+        feature_matrix[:, 3] = dist_depot
         feature_matrix = torch.FloatTensor(feature_matrix)
 
         graph_label, prev_node = self.get_graph_label_and_prev()

@@ -41,46 +41,33 @@ class Model(nn.Module):
     def device(self):
         return next(self.parameters()).device
     
-    # def get_visited_nodes_and_update_embeddings(self, x: torch.Tensor, batched_graphs: Batch):
-    #     """ Get the visited nodes and make their embeddings to be -Inf so that the softmax is 0 """
-    #     batch_edge_index = batched_graphs.edge_index
-        
-    #     for graph_idx in range(batched_graphs.num_graphs):
-    #         batch_mask = batched_graphs.batch == graph_idx
-
-    #         # Nodes of the graph
-    #         batch_nodes = torch.nonzero(batch_mask).flatten()
-    #         mask = torch.isin(batch_edge_index[0], batch_nodes)
-            
-    #         # Edge index/Edges of the graph
-    #         edge_index = batch_edge_index[:,mask]
-            
-    #         # Connected nodes are just unique nodes of the edges
-    #         connected_nodes = torch.unique(edge_index.flatten())
-            
-    #         # No edges TODO(pulkit): Take a look at this
-    #         if connected_nodes.shape[0] == 0:
-    #             continue
-           
-    #         # remove the depot node, Here a heuristic is that the depot node is the node 
-    #         # in the batch with min index
-    #         min_value, _ = torch.min(connected_nodes, dim=0)
-    #         connected_nodes = connected_nodes[connected_nodes!=min_value]
-            
-    #         mask = torch.isin(batch_nodes, connected_nodes)
-    #         x[graph_idx].masked_fill_(mask,-1e10)
-            
-    #     return x
-
     def get_mask(self, batch):
-        # This masking code is slow, we should make it faster
         batch_size = len(batch)
         num_nodes = batch.x.shape[0]//batch_size
+        
+        #Create the boolean matrix
         rs = torch.zeros((batch_size, num_nodes)).to(bool)
+        
+        """
         for i in range(batch_size):
             b = batch[i]
             unique = list(set(b.edge_index[0].tolist()) | set(b.edge_index[1].tolist()))
             rs[i][torch.tensor(unique)] = True
+        rs[:, 0] = False
+        """
+
+        # Find unique nodes across all graphs
+        all_edges = torch.unique(batch.edge_index[0].flatten())
+        all_edges = torch.cat((all_edges,torch.unique(batch.edge_index[1].flatten())))
+        unique_nodes = torch.unique(all_edges)
+
+        # Calculate the indices in the rs matrix
+        row_indices = unique_nodes // num_nodes
+        col_indices = unique_nodes % num_nodes
+       
+        # Set the corresponding entries to True
+        rs[row_indices, col_indices] = True
+        # For depot node, set the entry as False as vehicle can visit it again
         rs[:, 0] = False
         return rs
 
