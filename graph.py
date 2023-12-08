@@ -146,10 +146,12 @@ class BaseGraph:
         feature_matrix[:, 2] = cap
         feature_matrix = torch.FloatTensor(feature_matrix)
 
-        pyg_graph = Data(x=feature_matrix, edge_index=edge_list,
+        graph_label, prev_node = self.get_graph_label_and_prev()
+        pyg_graph = Data(x=feature_matrix,
+                         edge_index=edge_list,
+                         prev_node=torch.tensor(prev_node),
                          edge_attr={})
-        ### this might work
-        pyg_graph["y"] = self.get_graph_label()
+        pyg_graph["y"] = graph_label
         return pyg_graph
 
     def get_graph(self):
@@ -220,20 +222,21 @@ class BaseGraph:
 
         return self.G.number_of_nodes()
 
-    def set_graph_label(self, lab):
+    def set_graph_label_and_prev(self, lab, prev):
         """
         set label for the graph
         Args:
             lab:
         """
         self.graph_label = lab
-    def get_graph_label(self):
+        self.prev = prev
+    def get_graph_label_and_prev(self):
         """
         Returns:
              the graph label
         """
 
-        return self.graph_label
+        return self.graph_label, self.prev
 
 class CVRPGraph(BaseGraph):
     """
@@ -304,11 +307,9 @@ class GraphCollection:
 
 
         dist = None
-        if loc_x is not None and loc_y is not None:
-            prev_node = self.curr_graph.G.nodes()[self.visited_nodes[-1]]
-            #x, y = prev_node.get
-            #dist = np.sqrt((x-))
-        self.curr_graph.set_graph_label(node_id)
+        prev_node = self.visited_nodes[-1]
+        assert prev_node is not None
+        self.curr_graph.set_graph_label_and_prev(node_id, prev_node)
         self.all_graphs.append(self.curr_graph)
         self.curr_graph = deepcopy(self.curr_graph)
         #self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
@@ -362,6 +363,7 @@ class GraphCollection:
             node_ids: (List[int]) the nodes to add
         """
 
+        # print(node_ids)
         for i in range(len(node_ids)):
             n = node_ids[i]
             self.update_node(n)
@@ -373,7 +375,7 @@ class GraphCollection:
             (List[BaseGraph])
         """
 
-        return self.all_graphs
+        return self.all_graphs[1:]
 
     def __str__(self):
 

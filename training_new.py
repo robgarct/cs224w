@@ -44,6 +44,7 @@ def get_data_loaders(graphs_path: str, train_split_size=0.8, batch_size=16, max_
     for sol_instance in tqdm(sol_instances, "Parsing Graphs"):
         ## need to specify how many partial solutions we need partial solution index
         #cvrp_graphs = sol_instance.get_partial_solutions()
+        # print('a')
         cvrp_graphs = sol_instance.get_all_graphs()
         # convert to pytorch geometric dataset
         cvrp_graphs = list(map(lambda g: g.export_pyg(), cvrp_graphs))
@@ -52,8 +53,8 @@ def get_data_loaders(graphs_path: str, train_split_size=0.8, batch_size=16, max_
     train_graphs = itertools.chain.from_iterable(graphs[:split_idx])
     valid_graphs = itertools.chain.from_iterable(graphs[split_idx:])
 
-    train_graphs = DataLoader(list(train_graphs), shuffle=True, batch_size=batch_size)
-    valid_graphs = DataLoader(list(valid_graphs), shuffle=True, batch_size=batch_size)
+    train_graphs = DataLoader(list(train_graphs), shuffle=False, batch_size=batch_size)
+    valid_graphs = DataLoader(list(valid_graphs), shuffle=False, batch_size=batch_size)
     return train_graphs, valid_graphs
 
 
@@ -61,7 +62,10 @@ def compute_accuracy(logits, nexts):
     """Given logit predictions and the ground truth nodes to be visited next,
     computes the accuracy of the model.
     """
-    return (torch.argmax(logits, dim=-1) == nexts).to(torch.float32).mean().cpu().detach()
+    for i in range(len(logits)):
+        assert logits[i][nexts[i]] > -1e9
+    preds = torch.argmax(logits, dim=-1)
+    return (preds == nexts).to(torch.float32).mean().cpu().detach()
 
 
 def eval(model: Model, data_loder: DataLoader):
@@ -86,6 +90,7 @@ def train(model: Model, graphs_path: str, epochs: int = 20, batch_size: int = 16
     """Runs training for the model on the graphs pointed out by the given graphs path.
     The model weights are updated inplace, so this function returns nothing.
     """
+    print(learning_rate)
     optimizer = Adam(model.parameters(), lr=learning_rate)
     loss_fn = nn.CrossEntropyLoss()
     train_dl, valid_dl = get_data_loaders(graphs_path, batch_size=batch_size, max_instances=max_instances)
@@ -107,11 +112,14 @@ def train(model: Model, graphs_path: str, epochs: int = 20, batch_size: int = 16
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            # print("grad:", next(model.parameters()).grad[:3])
+            # print("params:", next(model.parameters())[:3])
+            # print(model.parameters())
             
             epoch_loss += loss.cpu().detach() / n_batches
             epoch_acc += acc.cpu().detach() / n_batches
 
-        print(f"Train {e} - loss:{loss:.4f}, acc:{acc:.4f}")
+        print(f"Train {e} - loss:{epoch_loss:.4f}, acc:{epoch_acc:.4f}")
 
         if e % eval_epochs == 0:
             # run eval
