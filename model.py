@@ -81,8 +81,8 @@ class Model(nn.Module):
         # Set the corresponding entries to True
         rs[row_indices, col_indices] = True 
         
-        # For depot node, set the entry as False as vehicle can visit it again
-        rs[:, 0] = False
+        # For depot node, mask it out only if the previous node is 0.
+        rs[:, 0] = batch.prev_node == 0
         return rs
 
     def forward(self, batched_graphs : Batch):
@@ -143,7 +143,7 @@ class Model(nn.Module):
 
 
     def probs(self, batched_graphs : Batch):
-        return  F.softmax(self.forward(batched_graphs))
+        return  F.softmax(self.forward(batched_graphs), dim=-1)
 
 
 class DummyModel(nn.Module):

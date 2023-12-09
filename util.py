@@ -52,7 +52,7 @@ def generate_multiple_graphs(N, num_nodes):
 
     return [generate_graph_scratch(num_nodes) for i in range(N)]
 
-def create_graph_solver_solution(graph_details, solution_details):
+def create_graph_no_sol(graph_details):
     """
     create a graph from the solver solution output
     Args:
@@ -69,11 +69,22 @@ def create_graph_solver_solution(graph_details, solution_details):
         all_loc_x[i+1] = graph_details[1][i][0]
         all_loc_y[i + 1] = graph_details[1][i][1]
         all_capacity[i+1] = graph_details[2][i]
-    order_nodes = solution_details[1]
 
-    #print(all_loc_y)
-    #print(all_capacity)
     col = GraphCollection(all_loc_x, all_loc_y, all_capacity)
+    return col
+
+
+def create_graph_solver_solution(graph_details, solution_details):
+    """
+    create a graph from the solver solution output
+    Args:
+        graph_details: (List[List]) the details of the input graph
+        solution_details: (List) the solution details
+    Returns:
+        GraphCollection
+    """
+    col = create_graph_no_sol(graph_details)
+    order_nodes = solution_details[1]
     col.add_multiple_nodes(order_nodes)
 
     return col

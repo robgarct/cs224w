@@ -308,9 +308,12 @@ class GraphCollection:
         self.visited_nodes = [self.start.depot_node]
         self.all_graphs = []
         self.curr_graph = self.start
-        depot_cap = CAPACITIES[nx.number_of_nodes(self.curr_graph.G)-1]
+        depot_cap = CAPACITIES[self.num_nodes-1]
         self.vehicle_capacity_map = [depot_cap]
-        
+
+    @property
+    def num_nodes(self):
+        return nx.number_of_nodes(self.curr_graph.G)
         
     ## TODO: Graph label
     def update_node(self, node_id, loc_x=None, loc_y=None, capacity=None):
@@ -343,12 +346,18 @@ class GraphCollection:
         self.vehicle_capacity_map.append(v_cap)
         ## Alternative solution
 
-    def get_current_graph(self):
-        """
-        Returns: (BaseGraph)
-        """
+    def is_complete(self):
+        return len(set(self.visited_nodes)) == self.num_nodes
 
-        return self.curr_graph
+    def get_current_unsolved_graph(self):
+        # Returns the current unsolved graph - used for inference.
+        prev_node = self.visited_nodes[-1]
+        v_cap = self.vehicle_capacity_map[-1]
+        curr_graph = deepcopy(self.curr_graph)
+        # Since we don't have a node label during inference, we set a dummy
+        # value of 1000.
+        curr_graph.set_graph_parameters(10000, prev_node, v_cap)
+        return curr_graph
 
     def get_kth_graph(self, k):
         """
@@ -401,6 +410,20 @@ class GraphCollection:
         """
 
         return self.all_graphs[1:]
+
+    def get_full_solution_cost(self):
+        assert self.is_complete()
+        # ensure depot is at beginning and end
+        sol = [0] + self.visited_nodes + [0]
+        prev_n = 0
+        dist = 0
+        for n in sol:
+            prev_n_loc = self.start.get_location(prev_n)
+            n_loc = self.start.get_location(n)
+            dist += np.linalg.norm(prev_n_loc - n_loc)
+            prev_n = n
+        return dist
+        
 
     def __str__(self):
 
