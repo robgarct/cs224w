@@ -71,6 +71,29 @@ class Model(nn.Module):
         rs[:, 0] = False
         return rs
 
+    def mask_capacity_based(self,batch):
+        
+        vehicle_capacity = batch.vehicle_cap
+        features = batch.x
+        batch_size = len(batch)
+        num_nodes = batch.x.shape[0]//batch_size
+        rs = torch.zeros((batch_size, num_nodes)).to(bool) 
+ 
+        broadcasted_cap = torch.repeat_interleave(vehicle_capacity,num_nodes)
+        indices = torch.where(features[:, 2] > broadcasted_cap)[0]
+        
+        # Calculate the indices in the rs matrix
+        row_indices = indices // num_nodes
+        col_indices = indices % num_nodes
+        
+        # Set the corresponding entries to True
+        rs[row_indices, col_indices] = True 
+        # For depot node, set the entry as False as vehicle can visit it again
+        rs[:, 0] = False
+        
+        return rs
+
+
     def forward(self, batched_graphs : Batch):
         # receives a batched data instance:
         # https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.data.Batch.html
@@ -99,13 +122,18 @@ class Model(nn.Module):
         batch_size = len(batched_graphs)
         idxs = torch.arange(batch_size) * 21
         prev_node = idxs+batched_graphs.prev_node
+        #import pdb; pdb.set_trace();
 
         embeds_prev = x[prev_node].reshape(batch_size, 1, -1)
         x =  x.reshape(batch_size, 21, -1)
         logits = x @ embeds_prev.transpose(-1, -2)
         mask = self.get_mask(batched_graphs)
 
-        return logits.squeeze(-1).masked_fill(mask, -1e10)
+        logits =  logits.squeeze(-1).masked_fill(mask, -1e10)
+
+        mask = self.mask_capacity_based(batched_graphs)
+        logits = logits.masked_fill(mask, -1e10)
+        return logits
 
         """
         # import pdb; pdb.set_trace()

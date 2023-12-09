@@ -34,7 +34,11 @@ class SolutionInstance:
         # return a graph with the edges of the solution up to the kth step
         pass
 '''
-
+CAPACITIES = {
+        20: 30,
+        50: 40,
+        100: 50
+}
 class BaseGraph:
     """
     Base class for CVPR graph
@@ -146,17 +150,18 @@ class BaseGraph:
                 depo_y = nx.get_node_attributes(self.G, "y")[node]
                 dist_depot[n] = 0
             else:
-                dist_depot[n] = math.sqrt((depo_x-loc_x[n])**2 + (depo_y - loc_y[n])**2)
+                dist_depot[n] = math.sqrt((depo_x-loc_x[n])**2 + (depo_y-loc_y[n])**2)
             n += 1
         feature_matrix[:, 0], feature_matrix[:, 1] = loc_x, loc_y
         feature_matrix[:, 2] = cap
         feature_matrix[:, 3] = dist_depot
         feature_matrix = torch.FloatTensor(feature_matrix)
 
-        graph_label, prev_node = self.get_graph_label_and_prev()
+        graph_label, prev_node, vehicle_cap = self.get_graph_parameters()
         pyg_graph = Data(x=feature_matrix,
                          edge_index=edge_list,
                          prev_node=torch.tensor(prev_node),
+                         vehicle_cap=torch.tensor(vehicle_cap),
                          edge_attr={})
         pyg_graph["y"] = graph_label
         return pyg_graph
@@ -229,7 +234,7 @@ class BaseGraph:
 
         return self.G.number_of_nodes()
 
-    def set_graph_label_and_prev(self, lab, prev):
+    def set_graph_parameters(self, lab, prev, v_cap):
         """
         set label for the graph
         Args:
@@ -237,13 +242,15 @@ class BaseGraph:
         """
         self.graph_label = lab
         self.prev = prev
-    def get_graph_label_and_prev(self):
+        self.vehicle_cap = v_cap
+        
+    def get_graph_parameters(self):
         """
         Returns:
              the graph label
         """
 
-        return self.graph_label, self.prev
+        return self.graph_label, self.prev, self.vehicle_cap
 
 class CVRPGraph(BaseGraph):
     """
@@ -291,6 +298,7 @@ class GraphCollection:
         depot_loc_x: (float) x-coordinate of depot_location
         depot_loc_y: (float) y-coordinate of depot_location
         """
+        
         self.start = BaseGraph()
         for key in loc_dict_x:
             self.start.add_node(key)
@@ -300,7 +308,10 @@ class GraphCollection:
         self.visited_nodes = [self.start.depot_node]
         self.all_graphs = []
         self.curr_graph = self.start
-
+        depot_cap = CAPACITIES[nx.number_of_nodes(self.curr_graph.G)-1]
+        self.vehicle_capacity_map = [depot_cap]
+        
+        
     ## TODO: Graph label
     def update_node(self, node_id, loc_x=None, loc_y=None, capacity=None):
         """
@@ -311,18 +322,24 @@ class GraphCollection:
             loc_y: (float) y-co-ordinate of the node
             capacity: (int) the product capacity of the node
         """
-
-
+        
+        
         dist = None
         prev_node = self.visited_nodes[-1]
+        node_demand = self.curr_graph.get_capacity(node_id)
+        v_cap = self.vehicle_capacity_map[-1]
+       
         assert prev_node is not None
-        self.curr_graph.set_graph_label_and_prev(node_id, prev_node)
+        self.curr_graph.set_graph_parameters(node_id, prev_node, v_cap)
         self.all_graphs.append(self.curr_graph)
         self.curr_graph = deepcopy(self.curr_graph)
         #self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
         self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
         self.visited_nodes.append(node_id)
-
+        
+        v_cap = self.vehicle_capacity_map[0] if node_id==0 else v_cap-node_demand
+        v_cap = max(0,v_cap)
+        self.vehicle_capacity_map.append(v_cap)
         ## Alternative solution
 
     def get_current_graph(self):
