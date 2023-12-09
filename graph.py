@@ -337,6 +337,7 @@ class GraphCollection:
         self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
         self.visited_nodes.append(node_id)
         
+        # vehicle capacity after the vehicle has passed from this node
         v_cap = self.vehicle_capacity_map[0] if node_id==0 else v_cap-node_demand
         v_cap = max(0,v_cap)
         self.vehicle_capacity_map.append(v_cap)
