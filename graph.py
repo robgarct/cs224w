@@ -224,12 +224,14 @@ class BaseGraph:
         return self.G.nodes()[node_id]["capacity"]
 
 
-    def draw_graph(self, with_pos=False, pos=None, folder="figure", name="sample_graph"):
+    def draw_graph(self, with_pos=True, pos=None, folder="figure", name="sample_graph"):
         """
         draws the graph
         """
-        if not with_pos:
-            f = nx.draw(self.G, with_labels=True)
+        if with_pos:
+            pos = {node: self.get_location(node) for node in self.G.nodes()}
+            f = nx.draw_networkx(self.G, pos=pos, with_labels=False, node_size=20, font_size=5)
+            nx.draw_networkx_labels(self.G, pos, font_size=8, verticalalignment="bottom")
         else:
             if pos is None:
                 pos = nx.spring_layout(self.G, k=0.3 * 1 / np.sqrt(len(self.G.nodes())),
@@ -329,7 +331,7 @@ class GraphCollection:
         #print("nodes", self.start.G.nodes())
         self.visited_nodes = [self.start.depot_node]
         self.curr_graph = self.start
-        self.all_graphs = [self.curr_graph]
+        self.all_graphs = []
         depot_cap = CAPACITIES[self.num_nodes-1]
         self.vehicle_capacity_map = [depot_cap]
 
@@ -348,7 +350,6 @@ class GraphCollection:
             capacity: (int) the product capacity of the node
         """
         
-        
         dist = None
         prev_node = self.visited_nodes[-1]
         node_demand = self.curr_graph.get_capacity(node_id)
@@ -356,12 +357,20 @@ class GraphCollection:
        
         assert prev_node is not None
         self.curr_graph.set_graph_parameters(node_id, prev_node, v_cap)
-        self.curr_graph = deepcopy(self.curr_graph)
-        #self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
-        self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
         self.all_graphs.append(self.curr_graph)
+        self.curr_graph = deepcopy(self.curr_graph)
+        self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
         self.visited_nodes.append(node_id)
+        unique_nodes = np.unique(self.visited_nodes)
+        ## implies all nodes have been visited. we connect the last node to the depot
+        if len(unique_nodes) == len(self.curr_graph.get_nodes()):
+            #print(node_id)
+            #print("equal")
+            prev_node = self.visited_nodes[-1]
+            self.curr_graph.set_graph_parameters(self.curr_graph.depot_node, prev_node, 0)
+            self.all_graphs.append(self.curr_graph)
 
+            #self.curr_graph.add_edge(self.visited_nodes[-2], self.visited_nodes[-1])
         
         # vehicle capacity after the vehicle has passed from this node
         v_cap = self.vehicle_capacity_map[0] if node_id==0 else v_cap-node_demand
