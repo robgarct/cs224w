@@ -11,6 +11,8 @@ from torch_geometric.data import Data
 from copy import deepcopy
 import torch
 import math
+
+import pandas as pd
 '''
 class Solution:
     """Wrapper of Graph: "Generator" and solution to it"""
@@ -97,7 +99,20 @@ class BaseGraph:
         the connecting nodes
         """
 
-        nx.set_edge_attributes(self.G, cost_dict)
+        nx.set_edge_attributes(self.G, cost_dict, name="cost")
+
+    def add_edge_distance(self):
+        """
+        add distance between edges
+        """
+        dist_dict = {}
+        for u, v in self.G.edges():
+            loc_u, loc_v = self.get_location(u), self.get_location(v)
+            dist_uv = np.sum(np.square(loc_u - loc_v)) ** 0.5
+            dist_dict[(u, v)] = dist_uv
+
+        self.add_cost(dist_dict)
+
     def set_capacity(self, capacity_dict):
         """
         adds product capacity
@@ -115,8 +130,9 @@ class BaseGraph:
         depot_dist_dict = {self.depot_node:0}
         for node in self.G.nodes():
             if node != self.depot_node:
-                depot_dist = self.G.edges()[self.depot_node, node]["cost"]
-                depot_dist_dict[node] = depot_dist
+                loc_depot, loc_v = self.get_location(self.depot_node), self.get_location(node)
+                depot_dist = np.sum(np.square(loc_depot - loc_v)) ** 0.5
+                depot_dist_dict[node] = round(depot_dist, 3)
         nx.set_node_attributes(self.G, depot_dist_dict, name="depot_dist")
 
     ## TODO: also assign label
@@ -131,8 +147,6 @@ class BaseGraph:
         i = 0
         for edge in self.G.edges():
             edge_list.append(edge)
-            #print(nx.get_edge_attributes(self.G, "cost"))
-            #edge_attributes.append(nx.get_edge_attributes(self.G, "cost")[edge])
             i += 1
         edge_list = torch.LongTensor(edge_list).T
         #edge_attributes = torch.tensor(edge_attributes)
@@ -210,14 +224,22 @@ class BaseGraph:
         return self.G.nodes()[node_id]["capacity"]
 
 
-    def draw_graph(self, pos=None, folder="figure", name="sample_graph"):
+    def draw_graph(self, with_pos=False, pos=None, folder="figure", name="sample_graph"):
         """
         draws the graph
         """
-        if pos is None:
+        if not with_pos:
             f = nx.draw(self.G, with_labels=True)
         else:
-            nx.draw_networkx(self.G, pos)
+            if pos is None:
+                pos = nx.spring_layout(self.G, k=0.3 * 1 / np.sqrt(len(self.G.nodes())),
+                                       iterations=20)
+                nx.draw_networkx(self.G, pos, node_size=100, font_size=8)
+                #edge_labels = nx.get_edge_attributes(self.G, 'cost')
+                #nx.draw_networkx_edge_labels(self.G, pos, edge_labels=edge_labels,
+                 #                            label_pos=0, font_size=5)
+            else:
+                nx.draw_networkx(self.G, pos)
         folder_path = Path(folder)
         folder_path.mkdir(parents=True, exist_ok=True)
         if ".pdf" not in name:
@@ -306,8 +328,8 @@ class GraphCollection:
         self.start.set_capacity(capacity_dict)
         #print("nodes", self.start.G.nodes())
         self.visited_nodes = [self.start.depot_node]
-        self.all_graphs = []
         self.curr_graph = self.start
+        self.all_graphs = [self.curr_graph]
         depot_cap = CAPACITIES[self.num_nodes-1]
         self.vehicle_capacity_map = [depot_cap]
 
@@ -334,11 +356,12 @@ class GraphCollection:
        
         assert prev_node is not None
         self.curr_graph.set_graph_parameters(node_id, prev_node, v_cap)
-        self.all_graphs.append(self.curr_graph)
         self.curr_graph = deepcopy(self.curr_graph)
         #self.curr_graph.add_node(node_id, loc_x, loc_y, capacity)
         self.curr_graph.add_edge(self.visited_nodes[-1], node_id)
+        self.all_graphs.append(self.curr_graph)
         self.visited_nodes.append(node_id)
+
         
         # vehicle capacity after the vehicle has passed from this node
         v_cap = self.vehicle_capacity_map[0] if node_id==0 else v_cap-node_demand
@@ -396,12 +419,9 @@ class GraphCollection:
         Args:
             node_ids: (List[int]) the nodes to add
         """
-
-        # print(node_ids)
         for i in range(len(node_ids)):
             n = node_ids[i]
             self.update_node(n)
-
 
     def get_all_graphs(self):
         """
