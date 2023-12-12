@@ -1,7 +1,7 @@
 from generator import *
 from graph import *
 from model import Model
-from typing import List
+from typing import List, Tuple
 from torch_geometric.data.batch import Batch
 
 def greedy_inference_single(
@@ -49,3 +49,15 @@ def beam_inference_parallel(
     """Runs inference on multiple graphs using beam search
     """
     pass
+
+
+def run_inference(model, graphs: List[Tuple[GraphCollection, List[int]]]) -> List[GraphCollection]:
+    """Runs inference over the given graphs and returns a list of them solved
+    """
+    solved_graphs = []
+    for g, sol in graphs:
+        g = deepcopy(g)
+        g.update_node(sol[1][0]) # unf we have to do this for now
+        res_g = greedy_inference_single(model, g)
+        solved_graphs.append(res_g)
+    return solved_graphs
