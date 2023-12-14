@@ -47,7 +47,8 @@ class Model(nn.Module):
         
         #Create the boolean matrix
         rs = torch.zeros((batch_size, num_nodes)).to(bool)
-        
+        if batch.edge_index.nelement()==0:
+          return rs
         """
         for i in range(batch_size):
             b = batch[i]
@@ -99,13 +100,15 @@ class Model(nn.Module):
 
         for i in range(self.num_layers-1):
           # TODO apply skip connections?
-          x = self.convs[i](x=x, edge_index=edge_index)
+          if edge_index.nelement()!=0:
+            x = self.convs[i](x=x, edge_index=edge_index)
           x = self.bns[i](x)
           x = F.relu(x)
           if self.dropout > 0.0:
             x = F.dropout(x, p = self.dropout, training=self.training)
 
-        x = self.convs[self.num_layers-1](x=x, edge_index=edge_index)
+        if edge_index.nelement()!=0:
+          x = self.convs[self.num_layers-1](x=x, edge_index=edge_index)
         x = x + pre_x
         x = F.relu(x)
         x = self.lin_post(x)
