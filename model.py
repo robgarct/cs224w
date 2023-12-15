@@ -13,7 +13,7 @@ class Model(nn.Module):
     this uses a GCN from pytorch geometric or whatever. However, it
     implements other useful functionality for training and inference.
     """
-    def __init__(self, input_dim, hidden_dim, num_layers, dropout):
+    def __init__(self, input_dim, hidden_dim, num_layers, dropout, graph_size=20):
         super(Model, self).__init__()
         
         ## Number of layers
@@ -36,6 +36,7 @@ class Model(nn.Module):
         # linear layers
         self.lin_pre = nn.Sequential(nn.Linear(input_dim, hidden_dim*2), nn.ReLU(), nn.Linear(hidden_dim*2, hidden_dim))
         self.lin_post = nn.Sequential(nn.Linear(hidden_dim, hidden_dim*2), nn.ReLU(), nn.Linear(hidden_dim*2, hidden_dim))
+        self.num_nodes = graph_size + 1
 
     @property
     def device(self):
@@ -114,11 +115,11 @@ class Model(nn.Module):
         x = self.lin_post(x)
         
         batch_size = len(batched_graphs)
-        idxs = torch.arange(batch_size) * 21
+        idxs = torch.arange(batch_size) * self.num_nodes
         prev_node = idxs+batched_graphs.prev_node
        
         embeds_prev = x[prev_node].reshape(batch_size, 1, -1)
-        x =  x.reshape(batch_size, 21, -1)
+        x =  x.reshape(batch_size, self.num_nodes, -1)
         logits = x @ embeds_prev.transpose(-1, -2)
         mask = self.get_mask(batched_graphs)
         

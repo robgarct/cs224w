@@ -20,7 +20,7 @@ def greedy_inference_single(
         next_node = next_probs.squeeze().argmax().cpu().item()
         graph.update_node(next_node)
         sol.append(next_node)
-        
+    graph.update_node(0) 
     return graph
 
 
@@ -44,8 +44,6 @@ def _beam_search_recursive(model, graphs, log_probs, beam_width):
             all_graphs.append(_graph)
         all_log_probs.append(curr_log_probs)
    
-    print("finished", len(finished_graphs))
-    print(beam_width)
     if len(finished_graphs) == beam_width:
         return finished_graphs
     
@@ -72,6 +70,8 @@ def beam_inference_single(
     best_graph = None
     min_cost = 1e9
     for graph in top_graphs:
+        graph = deepcopy(graph)
+        graph.update_node(0)
         cost = graph.get_full_solution_cost()
         if graph.get_full_solution_cost() < min_cost:
             best_graph = graph
