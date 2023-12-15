@@ -224,14 +224,19 @@ class BaseGraph:
         return self.G.nodes()[node_id]["capacity"]
 
 
-    def draw_graph(self, with_pos=True, pos=None, folder="figure", name="sample_graph"):
+    def draw_graph(self, with_pos=True, pos=None, folder="figure", name="sample_graph",
+                   axis=None, labels=False):
         """
         draws the graph
         """
         if with_pos:
+
             pos = {node: self.get_location(node) for node in self.G.nodes()}
-            f = nx.draw_networkx(self.G, pos=pos, with_labels=False, node_size=20, font_size=5)
-            nx.draw_networkx_labels(self.G, pos, font_size=8, verticalalignment="bottom")
+            f = nx.draw_networkx(self.G, pos=pos, with_labels=False, node_size=20, font_size=5,
+                                 ax=axis)
+            if labels:
+                nx.draw_networkx_labels(self.G, pos, font_size=8, verticalalignment="bottom",
+                                        ax=axis)
         else:
             if pos is None:
                 pos = nx.spring_layout(self.G, k=0.3 * 1 / np.sqrt(len(self.G.nodes())),
@@ -244,8 +249,8 @@ class BaseGraph:
                 nx.draw_networkx(self.G, pos)
         folder_path = Path(folder)
         folder_path.mkdir(parents=True, exist_ok=True)
-        if ".pdf" not in name:
-            name = name +".pdf"
+        if ".png" not in name:
+            name = name +".png"
         full_path = folder_path / name
         plt.savefig(full_path)
         print("saved")
