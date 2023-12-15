@@ -79,24 +79,6 @@ def beam_inference_single(
     return best_graph
 
 
-def greedy_inference_parallel(
-    model: Model,
-    graphs_wo_edges: List[CVRPGraph]
-)-> List[SolutionInstance]:
-    """Runs inference on a multiple graphs.
-    """
-    pass
-
-def beam_inference_parallel(
-    model: Model,
-    graph_wo_edges: CVRPGraph,
-    beam_width: int = 10,
-) -> List[SolutionInstance]:
-    """Runs inference on multiple graphs using beam search
-    """
-    pass
-
-
 def run_inference(model, graphs: List[Tuple[GraphCollection, List[int]]]) -> List[GraphCollection]:
     """Runs inference over the given graphs and returns a list of them solved
     """

@@ -9,6 +9,7 @@ import torch
 from torch import nn
 import itertools
 import pandas as pd
+from copy import deepcopy
 
 from model import Model
 from generator import *
@@ -17,6 +18,7 @@ from inference import run_inference
 from torch_geometric.loader import DataLoader
 from typing import List, Tuple
 from util import *
+from functools import lru_cache
 
 # import pickle5 as pkl
 
@@ -34,17 +36,12 @@ def get_solution_instances(
     unsolved_graphs = [(create_graph_no_sol(g), sol) for g, sol in graphs]
     return solved_graphs, unsolved_graphs
 
-
-def get_data_loaders(
+@lru_cache(1)
+def _get_data_loaders_helper(
     graphs_path: str,
     train_split_size=0.8,
-    batch_size=16,
     max_instances=-1
 ) -> Tuple[DataLoader, DataLoader, List[Tuple[GraphCollection, List[int]]]]:
-    """Given the path to the pickle of graphs generated and further solved
-    using LKH, returns 2 PYG's DataLoaders, one for training and the other
-    for validation.
-    """
     graphs = []
     sol_instances, unsolved_instances = get_solution_instances(graphs_path, max_instances)
     assert len(sol_instances) == len(unsolved_instances)
@@ -60,7 +57,25 @@ def get_data_loaders(
     train_graphs = itertools.chain.from_iterable(graphs[:split_idx])
     valid_graphs = itertools.chain.from_iterable(graphs[split_idx:])
     valid_unsolved = unsolved_instances[split_idx:]
+    return train_graphs, valid_graphs, valid_unsolved
 
+
+def get_data_loaders(
+    graphs_path: str,
+    train_split_size=0.8,
+    batch_size=16,
+    max_instances=-1
+) -> Tuple[DataLoader, DataLoader, List[Tuple[GraphCollection, List[int]]]]:
+    """Given the path to the pickle of graphs generated and further solved
+    using LKH, returns 2 PYG's DataLoaders, one for training and the other
+    for validation.
+    """
+    train_graphs, valid_graphs, valid_unsolved = _get_data_loaders_helper(
+        graphs_path,
+        train_split_size,
+        max_instances,
+    )
+    train_graphs, valid_graphs, valid_unsolved = deepcopy(train_graphs), deepcopy(valid_graphs), deepcopy(valid_unsolved)
     train_graphs = DataLoader(list(train_graphs), shuffle=False, batch_size=batch_size)
     valid_graphs = DataLoader(list(valid_graphs), shuffle=False, batch_size=batch_size)
     return train_graphs, valid_graphs, valid_unsolved
@@ -121,7 +136,22 @@ def train(
     loss_fn = nn.CrossEntropyLoss()
     train_dl, valid_dl, valid_unsolved = get_data_loaders(graphs_path, batch_size=batch_size, max_instances=max_instances)
 
-    for e in range(epochs):
+    def _run_model_eval(epoch):
+        e = epoch
+        model.eval()
+        with torch.no_grad():
+            valid_loss, valid_acc = eval(model, valid_dl)
+            valid_eval_solved_graph = run_inference(model, valid_unsolved[:max_inference_graphs])
+            valid_eval_avg_cost = np.mean([sg.get_full_solution_cost() for sg in valid_eval_solved_graph])
+        model.train()
+        print(f"Valid {e} - loss:{valid_loss:.4f}, acc:{valid_acc:.4f}, eval_avg_cost:{valid_eval_avg_cost:.4f}")
+        stats["valid_loss"].append((e, valid_loss))
+        stats["valid_acc"].append((e, valid_acc))
+        stats["valid_eval_cost"].append((e, valid_eval_avg_cost))
+
+    _run_model_eval(0)
+    
+    for e in range(1, epochs+1):
         epoch_acc = 0
         epoch_loss = 0
         n_batches = len(train_dl)
@@ -142,22 +172,13 @@ def train(
             epoch_loss += loss.cpu().detach() / n_batches
             epoch_acc += acc.cpu().detach() / n_batches
         
+        print(epoch_loss.item())
         stats["train_loss"].append((e, epoch_loss.item()))
         stats["train_acc"].append((e, epoch_acc.item()))
 
         print(f"Train {e} - loss:{epoch_loss:.4f}, acc:{epoch_acc:.4f}")
 
         if e % eval_epochs == 0:
-            # run eval
-            model.eval()
-            with torch.no_grad():
-                valid_loss, valid_acc = eval(model, valid_dl)
-                valid_eval_solved_graph = run_inference(model, valid_unsolved[:max_inference_graphs])
-                valid_eval_avg_cost = np.mean([sg.get_full_solution_cost() for sg in valid_eval_solved_graph])
-            model.train()
-            print(f"Valid {e} - loss:{valid_loss:.4f}, acc:{valid_acc:.4f}, eval_avg_cost:{valid_eval_avg_cost:.4f}")
-            stats["valid_loss"].append((e, valid_loss))
-            stats["valid_acc"].append((e, valid_acc))
-            stats["valid_eval_cost"].append((e, valid_eval_avg_cost))
+            _run_model_eval(e)
         
     return stats_to_df(stats)
